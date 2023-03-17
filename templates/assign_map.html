@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Assign map to user</h1>
+    <form action="{{ url_for('assign_map', map_id=map_item.id) }}" method="POST">
+        <div class="form-group">
+            <label for="user">Select user:</label>
+            <select name="user" id="user" class="form-control">
+                {% for user in users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <input type="submit" value="Assign" class="btn btn-primary">
+    </form>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Edit Map</h1>
+    <form action="{{ url_for('rename_map', map_id=map_to_rename.id) }}" method="post">
+
+        <div class="form-group">
+            <label for="new_map_number">Type:</label>
+            <input type="text" id="new_typecode" name="new_typecode" class="form-control" value="{{ map_to_rename.typecode }}" >
+        </div>
+
+        <div class="form-group">
+            <label for="new_map_number">Map Number:</label>
+            <input type="text" id="new_map_number" name="new_map_number" class="form-control" value="{{ map_to_rename.map_number }}" >
+        </div>
+
+        <div class="form-group">
+            <label for="new_area">Area:</label>
+            <input type="text" id="new_area" name="new_area" class="form-control" value="{{ map_to_rename.area }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="new_name">Name:</label>
+            <input type="text" id="new_name" name="new_name" class="form-control" value="{{ map_to_rename.name }}" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+    </form>
+{% endblock %}

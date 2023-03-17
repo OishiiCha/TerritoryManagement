@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Add Map</h1>
+    <form method="POST" enctype="multipart/form-data">
+ <div class="form-group">
+            <label for="typecode">Type:</label>
+            <input type="text" class="form-control" id="typecode"" name="typecode">
+        </div>
+        <div class="form-group">
+            <label for="map_id">Map Number:</label>
+            <input type="number" class="form-control" id="map_number" name="map_number" required>
+        </div>
+	<div class="form-group">
+            <label for="name">Map Area:</label>
+            <input type="text" class="form-control" id="area" name="area" required>
+        </div>
+        <div class="form-group">
+            <label for="name">Map Name:</label>
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="pdf_file">Upload PDF:</label>
+            <input type="file" class="form-control-file" id="pdf_file" name="pdf_file" accept="application/pdf">
+        </div>
+        <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+{% endblock %}

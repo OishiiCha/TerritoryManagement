@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+    <h1>Map Management</h1>
+    <a href="{{ url_for('add_map') }}" class="btn btn-success">Add Map</a>
+<!-- Search input -->
+    <h3></h3>
+    <button id="clearFilter" class="btn btn-sm btn-danger">Clear Filter</button>
+  <h3></h3>
+    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search for maps..." title="Type in a name">
+    <button id="searchBtn" class="btn btn-sm btn-warning">Search</button>
+<!-- Sort select dropdown -->
+  <h3></h3>
+    <select id="sortSelect" onchange="sortTable()">
+        <option value="0">Sort by ID</option>
+        <option value="1">Sort by Type</option>
+        <option value="2">Sort by Map Number</option>
+	<option value="3">Sort by Area</option>
+        <option value="4">Sort by Name</option>
+        <option value="5">Sort by Assigned To</option>
+        <option value="6">Sort by Assigned Date</option>
+        <option value="7">Sort by Checked In Date</option>
+    </select>
+    <button id="sortBtn" class="btn btn-sm btn-warning">Sort</button>
+    </table>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Map Number</th>
+		<th>AREA</th>
+                <th>Name</th>
+                <th>Assigned To</th>
+                <th>Assigned Date</th>
+                <th>Checked In Date</th>
+                <th>PDF</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for map in maps %}
+            <tr>
+                <td>{{ map.id }}</td>
+                <td>{{ map.typecode }}</td>
+		<td>{{ map.map_number }}</td>
+                <td>{{ map.area }}</td>
+                <td>{{ map.name }}</td>
+                <td>{{ map.assigned_to }}</td>
+<td>{{ map.assigned_date.strftime('%d/%m/%Y') if map.assigned_date else '' }}</td>
+<td>{{ map.checked_in_date.strftime('%d/%m/%Y') if map.checked_in_date else '' }}</td>
+
+                <td>
+{% if map.pdf_file %}
+    {% if map.pdf_size %}
+        <p>File Size: {{ map.pdf_size }} KB</p>
+    {% endif %}
+    <span>Attached</span>
+<!-- Download Button -->
+<a href="{{ url_for('download_pdf', map_id=map.id) }}" class="btn btn-sm btn-success icon-button">
+    <i class="fas fa-download"></i>
+</a>
+
+<!-- Delete Button -->
+<form action="{{ url_for('delete_pdf', map_id=map.id) }}" method="POST" style="display:inline;">
+    <button type="submit" class="btn btn-sm btn-danger icon-button">
+        <i class="fas fa-trash"></i>
+    </button>
+</form>
+
+{% else %}
+    <span>Not attached</span>
+<!-- Upload Button -->
+<a href="{{ url_for('upload_pdf', map_id=map.id) }}" class="btn btn-sm btn-primary icon-button">
+    <i class="fas fa-upload"></i>
+</a>
+{% endif %}
+
+                </td>
+                <td>
+{% if map.assigned_to %}
+  <form action="{{ url_for('check_in_map', map_id=map.id) }}" method="POST" style="display:inline;">
+    <input type="submit" value="Check In" class="btn btn-sm btn-success">
+  </form>
+{% else %}
+  <a href="{{ url_for('assign_map', map_id=map.id) }}" class="btn btn-sm btn-primary">Assign</a>
+{% endif %}
+
+                    <a href="{{ url_for('rename_map', map_id=map.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                    <form action="{{ url_for('delete_map', map_id=map.id) }}" method="POST" class="d-inline">
+                        <input type="submit" value="Delete Map" class="btn btn-danger btn-sm">
+                    </form>
+
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+<script>
+$(document).ready(function () {
+  function filterRows(applyFilter = true) {
+    var searchValue = applyFilter ? $("#searchInput").val().toLowerCase() : "";
+    $("table.table tbody tr").each(function () {
+      if ($(this).text().toLowerCase().indexOf(searchValue) > -1) {
+        $(this).show();
+      } else {
+        $(this).hide();
+      }
+    });
+  }
+
+  function sortRows() {
+    var sortBy = $("#sortSelect").val();
+    var rows = $("table.table tbody tr").toArray();
+
+    // Sort
+    rows.sort(function (a, b) {
+      var aValue = $(a).find("td").eq(sortBy).text();
+      var bValue = $(b).find("td").eq(sortBy).text();
+
+      if (sortBy == 0) {
+        return parseInt(aValue) - parseInt(bValue);
+      } else {
+        return aValue.localeCompare(bValue);
+      }
+    });
+
+    $("table.table tbody").empty().append(rows);
+  }
+
+  $("#searchBtn").on("click", function () {
+    filterRows();
+  });
+
+  $("#sortBtn").on("click", function () {
+    sortRows();
+    filterRows();
+  });
+
+  // Clear Filter button functionality
+  $("#clearFilter").on("click", function () {
+    $("#searchInput").val("");
+    $("#sortSelect").val("0");
+    filterRows(false);
+  });
+});
+</script>
+
+{% endblock %}

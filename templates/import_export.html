@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Import and Export</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Import Current Map Data</h2>
+            <form method="POST" action="{{ url_for('import_data') }}" enctype="multipart/form-data">
+                {{ import_form.csrf_token }}
+                <div class="form-group">
+                    <label for="{{ import_form.file.id }}">Select a file</label>
+                    {{ import_form.file(class="form-control-file", id=import_form.file.id) }}
+                </div>
+                <div class="form-group">
+                    {{ import_form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+        <div class="col-md-6">
+            <h2>Export</h2>
+            <a href="{{ url_for('export_data') }}" class="btn btn-primary">Export Data</a>
+        </div>
+    </div>
+{% endblock %}

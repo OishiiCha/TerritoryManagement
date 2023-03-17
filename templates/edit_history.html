@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Edit Map History</h1>
+  <form method="POST" action="{{ url_for('edit_history', record_id=record_id) }}">
+    {{ form.csrf_token }}
+    <div class="form-group">
+      <label for="{{ form.map_number.id }}">Map Number</label>
+      {{ form.map_number(class="form-control", id=form.map_number.id) }}
+    </div>
+    <div class="form-group">
+      <label for="{{ form.assigned_to.id }}">Assigned To</label>
+      {{ form.assigned_to(class="form-control", id=form.assigned_to.id) }}
+    </div>
+    <div class="form-group">
+      <label for="{{ form.assigned_date.id }}">Assigned Date</label>
+      {{ form.assigned_date(class="form-control", id=form.assigned_date.id) }}
+    </div>
+    <div class="form-group">
+      <label for="{{ form.checked_in_date.id }}">Checked In Date</label>
+      {{ form.checked_in_date(class="form-control", id=form.checked_in_date.id) }}
+    </div>
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+{% endblock %}

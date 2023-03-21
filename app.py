@@ -490,5 +490,5 @@ def import_map_history():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=2134, debug=True)
+    app.run(host='0.0.0.0', port=5511, debug=True)
 

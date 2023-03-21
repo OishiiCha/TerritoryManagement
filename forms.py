@@ -29,12 +29,6 @@ class UserForm(FlaskForm):
     email = StringField('Email', validators=[Optional(), Email()])
     submit = SubmitField('Add User')
 
-class ImportForm(FlaskForm):
-    file = FileField("File", validators=[FileRequired()])
-    submit = SubmitField("Import")
-    def __repr__(self):
-        return f"<User {self.name}>"
-
 class EditHistoryForm(FlaskForm):
     map_id = IntegerField('Map ID', validators=[DataRequired()])
     typecode = IntegerField('Type', validators=[DataRequired()])
@@ -42,7 +36,6 @@ class EditHistoryForm(FlaskForm):
     assigned_date = DateTimeField('Assigned Date', format='%Y-%m-%d %H:%M:%S', validators=[DataRequired()])
     checked_in_date = DateTimeField('Checked In Date', format='%Y-%m-%d %H:%M:%S', validators=[DataRequired()])
     submit = SubmitField('Save Changes')
-
 
 class RenameMapForm(FlaskForm):
     def __init__(self, *args, **kwargs):
@@ -53,8 +46,21 @@ class RenameMapForm(FlaskForm):
     name = StringField("New Map Name", validators=[DataRequired()])
     submit = SubmitField("Rename Map")
 
-
 class ImportForm(FlaskForm):
+    file = FileField("CSV File", validators=[
+        FileRequired(),
+        FileAllowed(['csv'], 'CSV files only!')
+    ])
+    submit = SubmitField("Import")
+
+class UserImportForm(FlaskForm):
+    file = FileField("CSV File", validators=[
+        FileRequired(),
+        FileAllowed(['csv'], 'CSV files only!')
+    ])
+    submit = SubmitField("Import")
+
+class MapHistoryImportForm(FlaskForm):
     file = FileField("CSV File", validators=[
         FileRequired(),
         FileAllowed(['csv'], 'CSV files only!')

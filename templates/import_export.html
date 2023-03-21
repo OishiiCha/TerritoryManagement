@@ -1,24 +1,72 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Import and Export</h1>
-    <div class="row">
-        <div class="col-md-6">
-            <h2>Import Current Map Data</h2>
-            <form method="POST" action="{{ url_for('import_data') }}" enctype="multipart/form-data">
+    <h1>Import/Export Data</h1>
+    <style>
+        .title-column {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .table {
+            border-collapse: separate;
+            border-spacing: 0.5em 1em;
+            width: auto;
+        }
+        .table td {
+            border: none;
+            padding: 0.5em;
+            white-space: nowrap;
+        }
+    </style>
+    <table class="table">
+        <tr>
+            <form action="{{ url_for('import_data') }}" method="post" enctype="multipart/form-data">
                 {{ import_form.csrf_token }}
-                <div class="form-group">
-                    <label for="{{ import_form.file.id }}">Select a file</label>
-                    {{ import_form.file(class="form-control-file", id=import_form.file.id) }}
-                </div>
-                <div class="form-group">
+                <td class="title-column">Maps</td>
+                <td>
+                    {{ import_form.file.label }}
+                    {{ import_form.file }}
+                </td>
+                <td>
                     {{ import_form.submit(class="btn btn-primary") }}
-                </div>
+                </td>
+                <td>
+                    <a href="{{ url_for('export_data') }}" class="btn btn-warning">Export</a>
+                </td>
             </form>
-        </div>
-        <div class="col-md-6">
-            <h2>Export</h2>
-            <a href="{{ url_for('export_data') }}" class="btn btn-primary">Export Data</a>
-        </div>
-    </div>
+        </tr>
+<tr>
+    <form action="{{ url_for('import_map_history') }}" method="post" enctype="multipart/form-data">
+        {{ map_history_import_form.csrf_token }}
+        <td class="title-column">Map History</td>
+        <td>
+            {{ map_history_import_form.file.label }}
+            {{ map_history_import_form.file }}
+        </td>
+        <td>
+            {{ map_history_import_form.submit(class="btn btn-primary") }}
+        </td>
+        <td>
+            <a href="{{ url_for('export_history_csv') }}" class="btn btn-warning">Export</a>
+        </td>
+    </form>
+</tr>
+        <tr>
+            <form action="{{ url_for('import_users') }}" method="post" enctype="multipart/form-data">
+                {{ user_import_form.csrf_token }}
+                <td class="title-column">Users</td>
+                <td>
+                    {{ user_import_form.file.label }}
+                    {{ user_import_form.file }}
+                </td>
+                <td>
+                    {{ user_import_form.submit(class="btn btn-primary") }}
+                </td>
+                <td>
+                    <button type="button" class="btn btn-warning" disabled>Export</button>
+                </td>
+            </form>
+        </tr>
+    </table>
 {% endblock %}
+

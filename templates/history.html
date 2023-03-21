@@ -1,18 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Map History</h1>    
+    <h1>Map History</h1>
     <a href="{{ url_for('export_history_csv') }}" class="btn btn-primary">Export History as CSV</a>
+    <a href="{{ url_for('import_map_history') }}" class="btn btn-primary">Import Map History</a>
     <h1></h1>
-    <table class="table">
+    <table class="table" id="historyTable">
         <thead>
             <tr>
                 <th>ID</th>
-		<th>Map ID</th>
-		<th>Type</th>
+                <th>Map ID</th>
+                <th>Type</th>
                 <th>Map Number</th>
-		<th>Area</th>
-		<th>Name</th>
+                <th>Area</th>
+                <th>Name</th>
                 <th>Assigned To</th>
                 <th>Assigned Date</th>
                 <th>Checked In Date</th>
@@ -23,20 +24,28 @@
             {% for record in history_records %}
             <tr>
                 <td>{{ record.id }}</td>
-		<td>{{ record.map_id }}</td>
+                <td>{{ record.map_id }}</td>
                 <td>{{ record.typecode }}</td>
                 <td>{{ record.map_number }}</td>
-		<td>{{ record.area }}</td>
+                <td>{{ record.area }}</td>
                 <td>{{ record.name }}</td>
                 <td>{{ record.assigned_to }}</td>
                 <td>{{ record.assigned_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                <td>{{ record.checked_in_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{% if record.checked_in_date %}{{ record.checked_in_date.strftime('%Y-%m-%d %H:%M:%S') }}{% endif %}</td>
+
                 <td>
-                    <a href="{{ url_for('edit_history', record_id=record.id) }}" class="btn btn-warning">Edit</a>
-                    <a href="{{ url_for('delete_history', record_id=record.id) }}" class="btn btn-danger">Delete</a>
+                    <a href="{{ url_for('edit_history', record_id=record.id) }}" class="btn btn-sm btn-warning" onclick="return confirmEdit();">Edit</a>
+                    <a href="{{ url_for('delete_history', record_id=record.id) }}" class="btn btn-danger btn-sm" onclick="return confirmDelete();">Delete</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <script>
+    $(document).ready(function () {
+        $('#historyTable').DataTable();
+    });
+    </script>
+
 {% endblock %}

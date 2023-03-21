@@ -6,7 +6,7 @@ db = SQLAlchemy()
 class Map(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     typecode = db.Column(db.String(1), nullable=True)
-    map_number = db.Column(db.String(), nullable=False)
+    map_number = db.Column(db.Integer(), nullable=False)
     area = db.Column(db.String(100), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     assigned_to = db.Column(db.String(100))
@@ -29,9 +29,9 @@ class MapHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     typecode = db.Column(db.String(1), nullable=True)
     map_id = db.Column(db.Integer, db.ForeignKey("map.id"), nullable=False)
-    map_number = db.Column(db.String(50), nullable=False)
+    map_number = db.Column(db.Integer(), nullable=False)
     area = db.Column(db.String(100), nullable=True)
-    name = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
     assigned_to = db.Column(db.String(100), nullable=True)
     assigned_date = db.Column(db.DateTime, nullable=True)
     checked_in_date = db.Column(db.DateTime, nullable=True)
@@ -50,7 +50,7 @@ class MapHistory(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
-
+    email = db.Column(db.String(100), nullable=True)
     def __repr__(self):
         return f'<User {self.id} {self.name}>'
 

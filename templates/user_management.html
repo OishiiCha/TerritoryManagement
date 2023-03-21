@@ -6,18 +6,18 @@
     {{ form.csrf_token }}
     <div class="form-group">
       <label for="{{ form.name.id }}">Name</label>
-      {{ form.name(class="form-control", id=form.name.id) }}
+      {{ form.name(class="form-control", id=form.name.id, style="max-width: 300px;") }}
     </div>
-    <div class="form-group">  <!-- Add this div for the email input box -->
+    <div class="form-group">
       <label for="{{ form.email.id }}">Email</label>
-      {{ form.email(class="form-control", id=form.email.id) }}
+      {{ form.email(class="form-control", id=form.email.id, style="max-width: 300px;") }}
     </div>
     <div class="form-group">
       {{ form.submit(class="btn btn-primary") }}
     </div>
   </form>
   <h2>Current Users</h2>
-  <table class="table">
+  <table class="table" id="userTable">
     <thead>
       <tr>
         <th>ID</th>
@@ -33,11 +33,20 @@
           <td>{{ user.name }}</td>
           <td>{{ user.email }}</td>
           <td>
-            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-warning">Edit</a>
-            <a href="{{ url_for('delete_user', user_id=user.id) }}" class="btn btn-danger">Delete</a>
-          </td>
+            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-warning btn-sm">Edit</a>
+<form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" class="d-inline">
+            <input type="submit" value="Delete" class="btn btn-danger btn-sm" onclick="return confirmDelete();" formaction="{{ url_for('delete_user', user_id=user.id) }}">
+</form>          
+</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
+
+  <script>
+    $(document).ready(function () {
+        $('#userTable').DataTable();
+    });
+  </script>
+
 {% endblock %}

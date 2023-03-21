@@ -1,10 +1,11 @@
 import os, csv
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory, Response
+from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import cast, Integer
 from flask_migrate import Migrate
 from models import db, Map, MapHistory, User
-from forms import UserForm, AssignForm, CheckInForm, UploadForm, AddMapForm, AddUserForm, ImportForm, RenameMapForm, ImportForm
+from forms import UserForm, AssignForm, CheckInForm, UploadForm, AddMapForm, AddUserForm, ImportForm, RenameMapForm, ImportForm, EditHistoryForm, UserImportForm, MapHistoryImportForm
 from werkzeug.utils import secure_filename
 from io import StringIO
 
@@ -17,8 +18,6 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 db.init_app(app)
 migrate = Migrate(app, db)
 
-if not os.path.exists(app.config['PDF_UPLOAD_FOLDER']):
-    os.makedirs(app.config['PDF_UPLOAD_FOLDER'])
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
@@ -35,6 +34,11 @@ class User(db.Model):
         return f"<User {self.name}>"
 
 
+def generate_filename(prefix):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"{prefix}_{timestamp}.csv"
+    return filename
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -48,11 +52,14 @@ def index():
         else:
             maps = Map.query.all()
     else:
-        maps = Map.query.all()
+        sort_by = request.args.get('sort_by', default='map_number', type=str)
+        if sort_by == 'map_number':
+            maps = Map.query.order_by(Map.map_number.asc()).all()
+        else:
+            # Implement other sorting options
+            maps = Map.query.order_by(Map.map_number.asc()).all()
 
     return render_template("index.html", maps=maps)
-
-
 @app.route('/assign_map/<int:map_id>', methods=['GET', 'POST'])
 def assign_map(map_id):
     map_item = Map.query.get(map_id)
@@ -202,10 +209,21 @@ def edit_user(user_id):
     form = UserForm(obj=user)
 
     if form.validate_on_submit():
-        user.name = form.name.data
-        user.email = form.email.data
-        db.session.commit()
-        return redirect(url_for('user_management'))
+        try:
+            user.name = form.name.data
+            user.email = form.email.data
+            db.session.commit()
+            flash('User updated successfully', 'success')
+            return redirect(url_for('user_management'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating user: {str(e)}', 'error')
+            app.logger.error(f'Error updating user: {str(e)}')
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'Error in field "{getattr(form, field).label.text}": {error}', 'error')
+                app.logger.error(f'Error in field "{getattr(form, field).label.text}": {error}')
 
     return render_template('edit_user.html', form=form, user=user)
 
@@ -229,108 +247,43 @@ def delete_map(map_id):
         flash('Map not found', 'danger')
     return redirect(url_for('index'))
 
-
-
-@app.route('/import_export', methods=['GET'])
-def import_export():
-    import_form = ImportForm()
-    return render_template('import_export.html', import_form=import_form)
-
-import csv
-from io import StringIO
-
-@app.route('/import_data', methods=['POST'])
-def import_data():
-    form = ImportForm()
-    if form.validate_on_submit():
-        file = form.file.data
-        file_string = file.read().decode('utf-8')
-        csvfile = StringIO(file_string)
-        csvreader = csv.DictReader(csvfile)
-
-        for row in csvreader:
-            try:
-                map_instance = Map(
-                    typecode=row['TypeCode'],
-                    map_number=row['Number'],
-                    area=row['Suffix'],
-                    name=row['MapName'],
-                    assigned_to=row['AssignedTo'],
-                    assigned_date=row['AssignedDate'],
-                    checked_in_date=row['CheckedInDate'],
-                )
-                db.session.add(map_instance)
-            except Exception as e:
-                print(e)
-                flash("Error importing data", "danger")
-                break
-        else:
-            db.session.commit()
-            flash("Data imported successfully", "success")
-    else:
-        flash("Error importing data", "danger")
-    return redirect(url_for('import_export'))
-
-
-@app.route('/export_data', methods=['GET'])
-def export_data():
-    EXPORT_FILE_EXTENSION = 'csv'
-    exported_file_path = 'data.csv'
-    
-    maps = Map.query.all()
-    
-    with open(exported_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['TypeCode', 'Number', 'Suffix', 'MapName', 'AssignedTo', 'AssignedDate', 'CheckedInDate']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        
-        for map_instance in maps:
-            writer.writerow({
-                'TypeCode': map_instance.typecode,
-                'Number': map_instance.map_number,
-                'Suffix': map_instance.area,
-                'MapName': map_instance.name,
-                'AssignedTo': map_instance.assigned_to,
-                'AssignedDate': map_instance.assigned_date,
-                'CheckedInDate': map_instance.checked_in_date,
-            })
-
-    return send_file(exported_file_path, as_attachment=True, attachment_filename=f'data.{EXPORT_FILE_EXTENSION}')
-
-
-
 @app.route("/history")
 def history():
     history_records = MapHistory.query.all()
     return render_template("history.html", history_records=history_records)
 
 
-from forms import EditHistoryForm
-
 @app.route('/edit_history/<int:record_id>', methods=['GET', 'POST'])
 def edit_history(record_id):
-    record = MapHistory.query.get_or_404(record_id)
-    form = EditHistoryForm()
+    try:
+        record = MapHistory.query.get_or_404(record_id)
+        form = EditHistoryForm()
 
-    if form.validate_on_submit():
-        record.map_id = form.map_id.data
-        record.typecode = form.typecode.data
-        record.map_number = form.map_number.data
-        record.assigned_to = form.assigned_to.data
-        record.assigned_date = form.assigned_date.data
-        record.checked_in_date = form.checked_in_date.data
+        if form.validate_on_submit():
+            record.map_id = form.map_id.data
+            record.typecode = form.typecode.data
+            record.map_number = form.map_number.data
+            record.assigned_to = form.assigned_to.data
+            record.assigned_date = form.assigned_date.data
+            record.checked_in_date = form.checked_in_date.data
 
-        db.session.commit()
-        return redirect(url_for('history'))
+            db.session.commit()
+            return redirect(url_for('history'))
 
-    form.map_id.data = record.map_id
-    form.typecode.data = record.typecode
-    form.map_number.data = record.map_number
-    form.assigned_to.data = record.assigned_to
-    form.assigned_date.data = record.assigned_date
-    form.checked_in_date.data = record.checked_in_date
+        form.map_id.data = record.map_id
+        form.typecode.data = record.typecode
+        form.map_number.data = record.map_number
+        form.assigned_to.data = record.assigned_to
+        form.assigned_date.data = record.assigned_date
+        form.checked_in_date.data = record.checked_in_date
 
-    return render_template('edit_history.html', form=form, record_id=record_id)
+        return render_template('edit_history.html', form=form, record_id=record_id)
+
+    except Exception as e:
+        # Log the error message
+        app.logger.error(f"Error occurred: {e}")
+        # Return a custom error page with a 500 status code
+        return render_template('error.html', message="An error occurred while processing your request."), 500
 
 @app.route('/delete_history/<int:record_id>')
 def delete_history(record_id):
@@ -348,9 +301,17 @@ def export_history_csv():
     # Define the CSV headers
     csv_headers = ['id', 'map_id', 'typecode', 'map_number',  'area', 'name', 'assigned_to', 'assigned_date', 'checked_in_date']
 
+    # Create the import_export_files folder if it doesn't exist
+    if not os.path.exists('import_export_files'):
+        os.makedirs('import_export_files')
+
+    # Save the file with the specified naming format
+    file_name = generate_filename('S13')
+    file_path = os.path.join('import_export_files', file_name)
+
     # Generate the CSV content
-    def generate_csv(csv_output):
-        writer = csv.writer(csv_output, quoting=csv.QUOTE_NONNUMERIC)
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(csv_headers)
 
         for record in history_records:
@@ -366,26 +327,168 @@ def export_history_csv():
                 record.checked_in_date
             ])
 
-    # Create a generator function for streaming the CSV data
-    def stream_csv():
-        csv_output = StringIO()
-        generate_csv(csv_output)
-        csv_output.seek(0)
-        return csv_output.getvalue()
+    return send_file(file_path, as_attachment=True, mimetype='text/csv')
 
-    # Generate the current date and time string for the filename
-    current_datetime_str = datetime.now().strftime('%Y%m%d_%H-%M-%S')
+@app.route('/import_export', methods=['GET'])
+def import_export():
+    import_form = ImportForm()
+    user_import_form = UserImportForm()
+    map_history_import_form = MapHistoryImportForm()
+    return render_template('import_export.html', import_form=import_form, user_import_form = user_import_form, map_history_import_form = map_history_import_form)
 
-    # Return the response with the CSV content and appropriate headers
-    return Response(
-        stream_csv(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f'attachment; filename=Map_History_Export_{current_datetime_str}.csv'
-        }
-    )
+
+@app.route('/import_data', methods=['POST'])
+def import_data():
+    form = ImportForm()
+    if form.validate_on_submit():
+        file = form.file.data
+        file_string = file.read().decode('utf-8')
+        csvfile = StringIO(file_string)
+        csvreader = csv.DictReader(csvfile)
+
+        for row in csvreader:
+            try:
+                map_instance = Map(
+                    typecode=row['TypeCode'],
+                    map_number=row['Number'],
+                    area=row['Suffix'],
+                    name=row['Area']
+                )
+                db.session.add(map_instance)
+            except Exception as e:
+                print(e)
+                flash("Error importing data", "danger")
+                break
+        else:
+            db.session.commit()
+            flash("Data imported successfully", "success")
+    else:
+        flash("Error importing data", "danger")
+    return redirect(url_for('import_export'))
+
+
+@app.route('/export_data', methods=['GET'])
+def export_data():
+    # Create the import_export_files folder if it doesn't exist
+    if not os.path.exists('import_export_files'):
+        os.makedirs('import_export_files')
+
+    maps = Map.query.all()
+
+    # Save the file with the specified naming format
+    file_name = generate_filename('current_data_export')
+    file_path = os.path.join('import_export_files', file_name)
+
+    with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['TypeCode', 'Number', 'Suffix', 'MapName', 'AssignedTo', 'AssignedDate', 'CheckedInDate']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for map_instance in maps:
+            writer.writerow({
+                'TypeCode': map_instance.typecode,
+                'Number': map_instance.map_number,
+                'Suffix': map_instance.area,
+                'MapName': map_instance.name,
+                'AssignedTo': map_instance.assigned_to,
+                'AssignedDate': map_instance.assigned_date,
+                'CheckedInDate': map_instance.checked_in_date,
+            })
+
+    return send_file(file_path, as_attachment=True, mimetype='text/csv')
+
+
+@app.route('/import_users', methods=['POST'])
+def import_users():
+    print("Import users route called")
+    form = UserImportForm()
+    if form.validate_on_submit():
+        try:
+            file = form.file.data
+            file_string = file.read().decode('utf-8')
+            print("File contents:", file_string)
+            csvfile = StringIO(file_string)
+            csvreader = csv.DictReader(csvfile, fieldnames=['name', 'email'])
+
+            for row in csvreader:
+                print(row)
+                name = row.get('name', '')
+                email = row.get('email', None)
+                user_instance = User(name=name, email=email)
+                db.session.add(user_instance)
+
+            db.session.commit()
+
+            # Save the import file to the import_export_files folder
+            file_name = generate_user_filename('user_import.csv')
+            file_path = os.path.join('import_export_files/', file_name)
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                f.write(file_string)
+
+            flash("User data imported successfully", "success")
+        except Exception as e:
+            print(e)
+            flash("Error importing user data", "danger")
+    else:
+        flash("Error importing user data", "danger")
+    return redirect(url_for('import_export'))
+
+
+@app.route('/import_map_history', methods=['POST'])
+def import_map_history():
+    form = MapHistoryImportForm()
+    if form.validate_on_submit():
+        try:
+            file = form.file.data
+            file_string = file.read().decode('utf-8')
+            csvfile = StringIO(file_string)
+            csvreader = csv.DictReader(csvfile)
+
+            for row in csvreader:
+                typecode = row.get('TypeCode', None)
+                map_number = row.get('Number', None)
+                area = row.get('Suffix', None)
+                checked_in_date = row.get('DateCompleted', None)
+                assigned_date = row.get('DateAssigned', None)
+                publisher = row.get('Publisher', None)
+
+                if typecode and map_number:
+                    map_instance = Map.query.filter_by(typecode=typecode, map_number=map_number).first()
+                    if map_instance:
+                        map_history_instance = MapHistory(
+                            map_id=map_instance.id,
+                            typecode=typecode,
+                            map_number=map_number,
+                            name=map_instance.name,
+                            area=area,
+                            checked_in_date=datetime.strptime(checked_in_date, "%Y%m%d").date() if checked_in_date else None,
+                            assigned_date=datetime.strptime(assigned_date, "%Y%m%d").date() if assigned_date else None,
+                            assigned_to=publisher
+                        )
+                        db.session.add(map_history_instance)
+                    else:
+                        flash(f"Map not found for TypeCode: {typecode}, Map Number: {map_number}", "warning")
+
+            db.session.commit()
+            flash("Map history data imported successfully", "success")
+
+            # Save the CSV file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"map_history_import_{timestamp}.csv"
+            file_path = os.path.join("import_export_files", filename)
+            with open(file_path, "w") as f:
+                f.write(file_string)
+
+        except Exception as e:
+            print(e)
+            flash("Error importing map history data", "danger")
+    else:
+        flash("Error importing map history data", "danger")
+    return redirect(url_for('import_export'))
+
+
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=2134)
+    app.run(host='0.0.0.0', port=2134, debug=True)
 

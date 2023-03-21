@@ -1,0 +1,9 @@
+Flask
+Flask-WTF
+WTForms
+Flask-Migrate
+Flask-Login
+Flask-Bootstrap
+Flask-Table
+Flask-Security
+SQLAlchemy

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Restore Database</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in backup_files %}
+                <tr>
+                    <td>{{ file }}</td>
+                    <td>{{ file.split('_')[2][:4] }}/{{ file.split('_')[2][4:6] }}/{{ file.split('_')[2][6:8] }} {{ file.split('_')[2][9:11] }}:{{ file.split('_')[2][11:13] }}</td>
+                    <td>
+                        <form action="{{ url_for('restore_db') }}" method="post">
+                            <input type="hidden" name="backup_file" value="{{ file }}">
+                            <button type="submit" class="btn btn-danger">Restore</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

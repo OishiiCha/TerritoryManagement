@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Restore Database</h1>
+    <form action="{{ url_for('restore_db') }}" method="post">
+        <select name="backup_file">
+            {% for file in backup_files %}
+                <option value="{{ file }}">{{ file }}</option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="Restore Database">
+    </form>
+{% endblock %}

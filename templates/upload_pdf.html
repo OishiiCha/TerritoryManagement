@@ -1,13 +1,20 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Upload PDF for {{ map_name }}</h1>
-    <form action="" method="POST" enctype="multipart/form-data">
-        {{ form.csrf_token }}
-        <div class="form-group">
-            <label for="{{ form.pdf_file.id }}">PDF File</label>
-            {{ form.pdf_file(class="form-control-file") }}
-        </div>
-        <button type="submit" class="btn btn-primary">Upload</button>
-    </form>
+  <h1>Upload PDF for {{ map_name }}</h1>
+  <hr>
+
+  {% if pdf_uploaded %}
+    <p>PDF file has already been uploaded for this map.</p>
+  {% else %}
+<form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    {{ form.map_id(readonly=true) }}
+    <div class="form-group">
+        <label for="{{ form.pdf_file.id }}">{{ form.pdf_file.label }}</label>
+        {{ form.pdf_file() }}
+    </div>
+<button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+</form>
+  {% endif %}
 {% endblock %}

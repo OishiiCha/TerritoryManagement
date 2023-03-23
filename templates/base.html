@@ -78,6 +78,9 @@
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('import_export') }}">Import/Export</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('debug') }}">Debug</a>
+            </li>
         </ul>
     </nav>
     <div class="container-fluid">
@@ -99,6 +102,14 @@
     function confirmEdit() {
         return confirm('Are you sure you want to edit this map?');
     }
+</script>
+<script>
+  // Remove flash messages after 5 seconds
+  window.setTimeout(function() {
+    $('.alert').fadeTo(500, 0).slideUp(500, function(){
+        $(this).remove(); 
+    });
+  }, {{ timeout }});
 </script>
 
 </body>

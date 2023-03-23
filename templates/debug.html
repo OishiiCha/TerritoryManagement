@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Map Debugging</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Typecode</th>
+                <th>Map Number</th>
+                <th>Area</th>
+                <th>Name</th>
+                <th>Assigned To</th>
+                <th>Assigned Date</th>
+                <th>Checked In Date</th>
+                <th>PDF Name</th>
+                <th>PDF Uploaded</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for map in maps %}
+                <tr>
+                    <td>{{ map.id }}</td>
+                    <td>{{ map.typecode }}</td>
+                    <td>{{ map.map_number }}</td>
+                    <td>{{ map.area }}</td>
+                    <td>{{ map.name }}</td>
+                    <td>{{ map.assigned_to }}</td>
+                    <td>{{ map.assigned_date.strftime('%d/%m/%Y') if map.assigned_date else '' }}</td>
+                    <td>{{ map.checked_in_date.strftime('%d/%m/%Y') if map.checked_in_date else '' }}</td>
+                    <td>{{ map.pdf_name }}</td>
+                    <td>{{ 'Yes' if map.pdf_data else 'No' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

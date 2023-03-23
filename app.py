@@ -1,6 +1,6 @@
-import os, csv
+import os, csv, shutil
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory, Response, send_file
+from flask import Flask, render_template, redirect, url_for, flash, flash as flask_flash, request, send_from_directory, Response, send_file, Markup
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import cast, Integer
 from flask_migrate import Migrate
@@ -12,7 +12,6 @@ from io import StringIO
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///maps.db'
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['PDF_UPLOAD_FOLDER'] = 'pdf_files'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db.init_app(app)
@@ -33,11 +32,21 @@ class User(db.Model):
     def __repr__(self):
         return f"<User {self.name}>"
 
-
 def generate_filename(prefix):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"{prefix}_{timestamp}.csv"
     return filename
+
+def flash(message, category='info', timeout=5000):
+    message = Markup(message)
+    flask_flash(message, category)
+
+
+@app.route('/debug')
+def debug():
+    maps = Map.query.all()
+    return render_template('debug.html', maps=maps)
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -60,6 +69,8 @@ def index():
             maps = Map.query.order_by(Map.map_number.asc()).all()
 
     return render_template("index.html", maps=maps)
+
+
 @app.route('/assign_map/<int:map_id>', methods=['GET', 'POST'])
 def assign_map(map_id):
     map_item = Map.query.get(map_id)
@@ -99,52 +110,72 @@ def check_in_map(map_id):
 
     return render_template("check_in_map.html", map_item=map_item)
 
+# PDF Files
 @app.route('/upload_pdf/<int:map_id>', methods=['GET', 'POST'])
 def upload_pdf(map_id):
     map_item = Map.query.get(map_id)
-    form = UploadForm()
+    form = UploadForm(map_id=map_id)
+    print(f"Received map_id: {map_id}")
 
     if form.validate_on_submit():
         pdf_file = form.pdf_file.data
-        filename = f'{map_item.id}_map.pdf'
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        pdf_file.save(file_path)
-        map_item.pdf_file = filename
+        filename = f'{map_item.id}.pdf'
+
+        pdf_data = pdf_file.read()
+        print(f'Read {len(pdf_data)} bytes from file')
+        map_item.pdf_name = filename
+        map_item.pdf_data = pdf_data
         db.session.commit()
+        print(f'Added PDF file for {map_item.name} with ID {map_item.id} to the database')
+
         flash(f'PDF file for {map_item.name} has been uploaded', 'success')
         return redirect(url_for('index'))
+    else:
+        print(f'Form is not valid. Errors: {form.errors}')
 
-    return render_template('upload_pdf.html', form=form, map_name=map_item.name)
+    return render_template('upload_pdf.html', form=form, map_name=map_item.name, pdf_uploaded=map_item.pdf_data is not None)
 
 @app.route("/download_pdf/<int:map_id>")
 def download_pdf(map_id):
     map_item = Map.query.get(map_id)
     if map_item is None:
         return f"Error: Map with ID {map_id} not found.", 404
-    pdf_file = map_item.pdf_file
-    return send_from_directory(app.config["UPLOAD_FOLDER"], pdf_file, as_attachment=True)
+
+    if map_item.pdf_data is None:
+        return f"Error: PDF file for map {map_id} not found.", 404
+
+    pdf_data = map_item.pdf_data
+    pdf_name = map_item.pdf_name
+
+    response = make_response(pdf_data)
+    response.headers.set('Content-Type', 'application/pdf')
+    response.headers.set('Content-Disposition', 'attachment', filename=pdf_name)
+
+    return response
+
 
 @app.route('/delete_pdf/<int:map_id>', methods=['POST'])
 def delete_pdf(map_id):
     map_item = Map.query.get(map_id)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], map_item.pdf_file)
-    print(f"File path: {file_path}")
+    if map_item is None:
+        return f"Error: Map with ID {map_id} not found.", 404
 
-    if os.path.exists(file_path):
+    if map_item.pdf_data is not None:
         try:
-            os.remove(file_path)
-            map_item.pdf_file = None
+            map_item.pdf_data = None
+            map_item.pdf_name = None
             db.session.commit()
             flash(f'PDF file for {map_item.name} has been deleted', 'success')
         except Exception as e:
             print(f"Exception: {e}")
             flash(f'Error deleting the PDF file for {map_item.name}: {e}', 'danger')
     else:
-        print("File not found")
-        flash(f'PDF file for {map_item.name} not found', 'danger')
+        flash(f'PDF entry for {map_item.name} not found in the database', 'danger')
 
     return redirect(url_for('index'))
 
+
+# Maps
 @app.route("/add_map", methods=["GET", "POST"])
 def add_map():
     if request.method == "POST":
@@ -153,12 +184,12 @@ def add_map():
         area = request.form["area"]
         name = request.form["name"]
         pdf_file = request.files["pdf_file"]
-        pdf_filename = None
-        if pdf_file:
-            pdf_filename = secure_filename(pdf_file.filename)
+        pdf_data = pdf_file.read() if pdf_file else None
+        pdf_filename = secure_filename(pdf_file.filename) if pdf_file else None
+        if pdf_filename:
             pdf_file.save(os.path.join(app.config["UPLOAD_FOLDER"], pdf_filename))
 
-        new_map = Map(typecode=typecode,map_number=map_number,area=area, name=name, pdf_file=pdf_filename)
+        new_map = Map(typecode=typecode, map_number=map_number, area=area, name=name, pdf_file=pdf_filename, pdf_data=pdf_data)
         db.session.add(new_map)
         db.session.commit()
         return redirect(url_for("index"))
@@ -334,8 +365,7 @@ def import_export():
     import_form = ImportForm()
     user_import_form = UserImportForm()
     map_history_import_form = MapHistoryImportForm()
-    return render_template('import_export.html', import_form=import_form, user_import_form = user_import_form, map_history_import_form = map_history_import_form)
-
+    return render_template('import_export.html', import_form=import_form, user_import_form=user_import_form, map_history_import_form=map_history_import_form)
 
 @app.route('/import_data', methods=['POST'])
 def import_data():
@@ -487,8 +517,52 @@ def import_map_history():
     return redirect(url_for('import_export'))
 
 
+@app.route('/backup_db', methods=['POST'])
+def backup_db():
+    # Get the current date and time
+    now = datetime.datetime.now()
+    date_str = now.strftime("%Y%m%d_%H%M%S")
+
+    # Create the backup folder if it doesn't exist
+    backup_dir = "db_bk"
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
+    # Generate the backup file name
+    backup_file = f"{backup_dir}/db_bk_{date_str}.db"
+
+    # Copy the database file to the backup folder
+    shutil.copy("instance/maps.db", backup_file)
+
+    # Return a success message to the user
+    flash("Database backup created successfully.", "success")
+    return redirect(url_for('import_export'))
+    pass
+
+@app.route('/backup_files')
+def show_backup_files():
+    backup_dir = 'db_bk'
+    backup_files = []
+    for filename in os.listdir(backup_dir):
+        if filename.endswith('.db'):
+            backup_files.append(filename)
+    return render_template('backup_files.html', backup_files=backup_files)
+
+@app.route('/restore_db', methods=['GET', 'POST'])
+def restore_db():
+    if request.method == 'POST':
+        backup_dir = "db_bk"
+        backup_file = request.form['backup_file']
+        backup_path = os.path.join(backup_dir, backup_file)
+        shutil.copy(backup_path, "instance/maps.db")
+        flash(f"Restored database from backup file {backup_file}", "success")
+        return redirect(url_for('import_export'))
+    else:
+        backup_dir = "db_bk"
+        backup_files = os.listdir(backup_dir)
+        return render_template('database_backup.html', backup_files=backup_files)
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5511, debug=True)
+    app.run(host='0.0.0.0', port=2134, debug=True)
 

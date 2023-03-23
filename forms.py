@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, SelectField, FileField, DateTimeField, IntegerField
-from wtforms.validators import DataRequired, Email, Optional
+from wtforms import StringField, PasswordField, SubmitField, SelectField, FileField, DateTimeField, IntegerField, HiddenField
+from wtforms.validators import DataRequired, Email, Optional, Length
 
 class AssignForm(FlaskForm):
     user = SelectField('User', coerce=int, validators=[DataRequired()])
@@ -12,7 +12,13 @@ class CheckInForm(FlaskForm):
 
 class UploadForm(FlaskForm):
     pdf_file = FileField('PDF File', validators=[DataRequired()])
+    map_id = HiddenField('Map ID', validators=[DataRequired()])
     submit = SubmitField('Upload')
+
+    def __init__(self, *args, **kwargs):
+        super(UploadForm, self).__init__(*args, **kwargs)
+        if 'map_id' in kwargs:
+            self.map_id.data = kwargs['map_id']
 
 class AddMapForm(FlaskForm):
     name = StringField('Map Name', validators=[DataRequired()])

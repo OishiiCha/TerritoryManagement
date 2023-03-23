@@ -18,7 +18,16 @@
             white-space: nowrap;
         }
     </style>
-    <table class="table">
+    <div class="d-flex justify-content-end">
+        <form action="{{ url_for('backup_db') }}" method="post">
+            <button type="submit" class="btn btn-success mr-2">Backup Database</button>
+        </form>
+
+        <form action="{{ url_for('show_backup_files') }}" method="get">
+            <button type="submit" class="btn btn-primary mr-2">View Backups</button>
+        </form>
+    </div>
+    <table class="table mt-3">
         <tr>
             <form action="{{ url_for('import_data') }}" method="post" enctype="multipart/form-data">
                 {{ import_form.csrf_token }}
@@ -35,22 +44,22 @@
                 </td>
             </form>
         </tr>
-<tr>
-    <form action="{{ url_for('import_map_history') }}" method="post" enctype="multipart/form-data">
-        {{ map_history_import_form.csrf_token }}
-        <td class="title-column">Map History</td>
-        <td>
-            {{ map_history_import_form.file.label }}
-            {{ map_history_import_form.file }}
-        </td>
-        <td>
-            {{ map_history_import_form.submit(class="btn btn-primary") }}
-        </td>
-        <td>
-            <a href="{{ url_for('export_history_csv') }}" class="btn btn-warning">Export</a>
-        </td>
-    </form>
-</tr>
+        <tr>
+            <form action="{{ url_for('import_map_history') }}" method="post" enctype="multipart/form-data">
+                {{ map_history_import_form.csrf_token }}
+                <td class="title-column">Map History</td>
+                <td>
+                    {{ map_history_import_form.file.label }}
+                    {{ map_history_import_form.file }}
+                </td>
+                <td>
+                    {{ map_history_import_form.submit(class="btn btn-primary") }}
+                </td>
+                <td>
+                    <a href="{{ url_for('export_history_csv') }}" class="btn btn-warning">Export</a>
+                </td>
+            </form>
+        </tr>
         <tr>
             <form action="{{ url_for('import_users') }}" method="post" enctype="multipart/form-data">
                 {{ user_import_form.csrf_token }}
@@ -69,4 +78,3 @@
         </tr>
     </table>
 {% endblock %}
-
